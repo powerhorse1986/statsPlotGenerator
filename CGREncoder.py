@@ -398,15 +398,20 @@ class EncodingByTreatMent:
     __trtmnt = {'high': pd.read_csv('/home/lima/Project/simulation/Comparision/high.txt', skiprows = 0).values.tolist(),
                      'low': pd.read_csv('/home/lima/Project/simulation/Comparision/low.txt', skiprows = 0).values.tolist(),
                      'veh': pd.read_csv('/home/lima/Project/simulation/Comparision/veh.txt', skiprows = 0).values.tolist(),
-                     'pt': pd.read_csv('/home/lima/Project/simulation/Comparision/pt.txt', skiprows = 0).values.tolist()}
+                     'pt': pd.read_csv('/home/lima/Project/simulation/Comparision/pt.txt', skiprows = 0).values.tolist(),
+                     'all': pd.read_csv('/home/lima/Project/simulation/Comparision/samples.txt', skiprows = 0).values.tolist()}
 
-    def __init__(self, trtmnt, normalized, cut):
+    def __init__(self, trtmnt, normalized, pre_process_software, cut):
         self.__loader = self.KVRPlot.DataLoader(trtmnt, normalized)
         # self.__kall = self.__loader.getKall()
-        __temp = self.__loader.getRSEM()
-        self.__rsem = __temp[cut]
-        # print(self.__rsem)
-        self.__genes = list(self.__rsem.index.values)
+        if pre_process_software == "RSEM":
+            __temp = self.__loader.getRSEM()
+            self.__counts_matrix = __temp[cut]
+            # print(self.__rsem)
+        else:
+            self.__counts_matrix = self.__loader.getKall()
+            
+        self.__genes = list(self.__counts_matrix.index.values)
         self.__gene_number = len(self.__genes)
         # print(len(self.__genes))
         # self.__cut = cut
@@ -420,7 +425,7 @@ class EncodingByTreatMent:
 
     def convention_convert(self, k):
         for sample in self.__samples:
-            __tmpDF = self.__rsem[sample]
+            __tmpDF = self.__counts_matrix[sample]
             __tmpDict = {}
             for index in range(len(__tmpDF)):
                 __gene = self.__genes[index]
