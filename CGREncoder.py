@@ -334,7 +334,7 @@ class CGREncoder:
     def getKmer(self):
         return [self.__kmer_counts, self.__kmer_prob]
 
-    def encoding(self, seq, k):
+    def encoding(self, seq, k = 2):
         self.__kmerGenerator(seq, k)
         for key, value in self.__kmer_prob.items():
             minx = 0
@@ -391,6 +391,51 @@ class CGREncoder:
 
         self.__helper(charIdx, minx, midx, maxx, miny, midy, maxy, key, value)
 
+class EncodingGivenGenes:
+    import pandas as pd
+    import multiprocessing as mp
+
+    def __init__(self, geneSet):
+        self.__geneIDs = list(geneSet)
+        self.__encoder = CGREncoder()
+        self.__retriever = SeqRetrieve()
+        self.__result = self.mp.Manager().dict()
+
+    def __multicoreConvert(self, k, geneID):
+        __gene = geneID
+        print("Working with {gene}".format(gene = __gene))
+        __tmpSeq = self.__retriever.getFullSeq(__gene)
+        self.__encoder.encoding(__tmpSeq, k)
+        __tmpMatrix = self.__encoder.getChaosMatrix()
+        # if self.__filter == "guassian":
+        #    __tmpMatrix = guanssian_filter(__tmpMatrix, sigma = 1)
+        __tmpMatrix = __tmpMatrix.reshape(1, 4 ** k)
+        __tmpList = __tmpMatrix.tolist()
+        # __tmpDict[__gene] = __tmpList
+        self.__result[__gene] = __tmpList
+        # result = {__gene: __tmpList}
+        # return result
+
+    def convert(self, k, multiprocessing):
+        pool = self.mp.Pool(processes = multiprocessing)
+        # for sample in self.__samples:
+        # __tmpDF = self.__rsem[sample]
+        for x in self.__geneIDs:
+            pool.apply_async(self.__multicoreConvert(2, x), args = (x, ))
+        # results = tuple(results)
+        # output = []
+        # for result in results:
+        #    output.append(result.get())
+        pool.close()
+        pool.join()
+        # output = [p.get() for p in results]
+        # self.__result[self.__trtmnt_grp] = self.__result
+        #print("{Group} being converted.".format(Group = self.__trtmnt_grp))
+
+    def getConvertedMatrix(self):
+        return self.__result
+
+
 class EncodingByTreatMent:
     import pandas as pd
     import multiprocessing as mp
@@ -401,16 +446,17 @@ class EncodingByTreatMent:
                      'pt': pd.read_csv('/home/lima/Project/simulation/Comparision/pt.txt', skiprows = 0).values.tolist(),
                      'all': pd.read_csv('/home/lima/Project/simulation/Comparision/samples.txt', skiprows = 0).values.tolist()}
 
-    def __init__(self, trtmnt, normalized, pre_process_software, cut):
-        self.__loader = self.KVRPlot.DataLoader(trtmnt, normalized)
+    def __init__(self, trtmnt, normalized, pre_process_software, cut = 0):
+        self.__loader = self.KVRPlot.DataLoader(trtmnt, normalized, cut)
+        # self.__filter = filter
         # self.__kall = self.__loader.getKall()
         if pre_process_software == "RSEM":
             __temp = self.__loader.getRSEM()
-            self.__counts_matrix = __temp[cut]
+            self.__counts_matrix = __temp
             # print(self.__rsem)
         else:
             self.__counts_matrix = self.__loader.getKall()
-            
+
         self.__genes = list(self.__counts_matrix.index.values)
         self.__gene_number = len(self.__genes)
         # print(len(self.__genes))
@@ -444,6 +490,8 @@ class EncodingByTreatMent:
         __tmpSeq = self.__retriever.getFullSeq(__gene)
         self.__encoder.encoding(__tmpSeq, k)
         __tmpMatrix = self.__encoder.getChaosMatrix()
+        # if self.__filter == "guassian":
+        #    __tmpMatrix = guanssian_filter(__tmpMatrix, sigma = 1)
         __tmpMatrix = __tmpMatrix.reshape(1, 4 ** k)
         __tmpList = tuple(__tmpMatrix.tolist())
         # __tmpDict[__gene] = __tmpList
